@@ -1,0 +1,109 @@
+import { useContext } from "react";
+import { SecretJsContext } from "./SecretJsContext";
+import { QueryError, WalletError } from "./SecretJsError";
+import type { TxResponse } from "secretjs";
+
+const contractCodeHash = import.meta.env.VITE_CONTRACT_CODE_HASH;
+const contractAddress = import.meta.env.VITE_CONTRACT_ADDR;
+
+type GameState = {
+    fen: string;
+    turn: number;
+    status: GameStatus;
+};
+
+type GameStatus = "Pending" | "Active" | "Check" | "Checkmate" | "Stalemate";
+
+type GameStatusResponse = GameState | string;
+
+const SecretJsFunctions = () => {
+    const context = useContext(SecretJsContext);
+
+    if (!context) {
+        throw new Error("SecretJsFunctions must be used within a SecretJsContextProvider");
+    }
+
+    const { secretJs, secretAddress } = context;
+
+    const createGame = async (): Promise<TxResponse> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+
+        const msg = {
+            sender: secretAddress,
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            msg: {
+                create_game: {}
+            }
+        };
+
+        const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
+        console.log(tx);
+        return tx;
+    };
+
+    const joinGame = async (gameId: number): Promise<TxResponse> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+
+        const msg = {
+            sender: secretAddress,
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            msg: {
+                join_game: { game_id: gameId }
+            }
+        };
+
+        const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
+        console.log(tx);
+        return tx;
+    };
+
+    const getGame = async (gameId: number): Promise<GameStatusResponse> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+        const msg = {
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            query: {
+                get_game: { game_id: Number(gameId) }
+            }
+        };
+
+        try {
+            const response = await secretJs.query.compute.queryContract(msg);
+            console.log(response);
+            return response as GameStatusResponse;
+        } catch (error) {
+            throw new QueryError("Failed to fetch game status: " + error);
+        }
+    }
+
+    const listGames = async (): Promise<GameState[]> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+        const msg = {
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            query: {
+                list_games: {}
+            }
+        };
+
+        try {
+            const response = await secretJs.query.compute.queryContract(msg);
+            console.log(response);
+            return response as GameState[];
+        } catch (error) {
+            throw new QueryError("Failed to fetch game list: " + error);
+        }
+    }
+
+    return {
+        createGame,
+        joinGame,
+        getGame,
+        listGames
+    };
+};
+
+export { SecretJsFunctions };
+export type { GameState, GameStatusResponse };
