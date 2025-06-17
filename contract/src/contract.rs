@@ -3,6 +3,7 @@ use cosmwasm_std::{
     StdError, StdResult,
 };
 
+use crate::chess::validate_move;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, QueryAnswer};
 use crate::state::{GameStatus, GameState, GAMES, NEXT_GAME_ID};
 
@@ -23,7 +24,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
     match msg {
         ExecuteMsg::CreateGame{} => create_game(deps,env,sender_canonical),
         ExecuteMsg::JoinGame{game_id} => join_game(deps,env,sender_canonical,game_id),
-        ExecuteMsg::MakeMove { game_id, move_str } => make_move(deps,env,sender_canonical,game_id,move_str),
+        ExecuteMsg::MakeMove { game_id, move_from, move_to, promotion } => make_move(deps,env,sender_canonical,game_id,move_from, move_to, promotion),
         ExecuteMsg::Resign { game_id } => resign(deps,env,sender_canonical,game_id),
     }
 }
@@ -50,6 +51,9 @@ fn join_game(deps: DepsMut, _env: Env, sender: CanonicalAddr, game_id: u64) -> S
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
+            if state.white == sender {
+                return Ok(Response::default()); // Not an error - may just be reconnecting to the game
+            }
             state.black = Some(sender);
             state.status = GameStatus::Active;
             GAMES.insert(deps.storage, &game_id, &state)?;
@@ -59,13 +63,30 @@ fn join_game(deps: DepsMut, _env: Env, sender: CanonicalAddr, game_id: u64) -> S
     }
 }
 
-fn make_move(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64, move_str: String) -> StdResult<Response> {
+fn make_move(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64, move_from: String, move_to: String, promotion: Option<String>) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
-            state.fen = move_str;
+            if (sender == state.white && state.turn % 2 != 0) {
+                // Not whites turn
+                return Err(StdError::GenericErr { msg: (format!("It is blacks turn")) });
+            } else if (sender == state.black && state.turn % 2 == 0) {
+                // Not blacks turn
+                return Err(StdError::GenericErr { msg: (format!("It is whites turn")) });
+            } else if (sender != state.black && sender != state.white) {
+                // Not one of the players
+                return Err(StdError::GenericErr { msg: (format!("Not a player")) });
+            }
+            let (new_fen, status) = validate_move(&state.fen, &move_from, &move_to, promotion.as_deref())
+                .map_err(|_| StdError::GenericErr { msg: "Illegal Move".to_string() })?;
+            state.fen = new_fen;
             state.turn += 1;
-            // TODO: Check game status after this turn (i.e. maybe check/checkmate/stalemate)
+            state.status = match status {
+                chess::BoardStatus::Ongoing => GameStatus::Active,
+                chess::BoardStatus::Stalemate => GameStatus::Stalemate,
+                chess::BoardStatus::Checkmate => GameStatus::Checkmate
+            };
+            GAMES.insert(deps.storage, &game_id, &state)?;
             Ok(Response::default())
         },
         None => Err(StdError::GenericErr { msg: (format!("No game found with id {game_id}")) })

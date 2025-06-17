@@ -11,7 +11,7 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     CreateGame {},
     JoinGame   { game_id: u64 },
-    MakeMove   { game_id: u64, move_str: String }, // e.g., "e2e4"
+    MakeMove   { game_id: u64, move_from: String, move_to: String, promotion: Option<String> }, // e.g., "e2", "e4", "None"
     Resign     { game_id: u64 }
 }
 

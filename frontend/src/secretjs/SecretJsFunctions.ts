@@ -59,13 +59,32 @@ const SecretJsFunctions = () => {
         return tx;
     };
 
+    const makeMove = async (gameId: number, from: string, to: string, promotion: string | null): Promise<TxResponse> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+        const game_id = parseInt(gameId.toString(), 10);
+        const msg = {
+            sender: secretAddress,
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            msg: {
+                make_move: { game_id: game_id, move_from: from, move_to: to, promotion: promotion }
+            }
+        };
+
+        const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
+        console.log(tx);
+        return tx;
+    }
+
+
     const getGame = async (gameId: number): Promise<GameStatusResponse> => {
         if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+        const game_id = parseInt(gameId.toString(), 10);
         const msg = {
             contract_address: contractAddress,
             code_hash: contractCodeHash,
             query: {
-                get_game: { game_id: Number(gameId) }
+                get_game: { game_id: game_id }
             }
         };
 
@@ -101,7 +120,8 @@ const SecretJsFunctions = () => {
         createGame,
         joinGame,
         getGame,
-        listGames
+        listGames,
+        makeMove,
     };
 };
 

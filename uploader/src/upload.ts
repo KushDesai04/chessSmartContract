@@ -26,9 +26,14 @@ const uploadContract = async (contract_wasm: Buffer): Promise<{code_id: string, 
             builder: "",
         },
         {
-            gasLimit: 1_500_000,
+            gasLimit: 3_500_000,
         }
     );
+
+    if (tx.code !== 0) {
+        console.log(`Failed to upload contract: ${JSON.stringify(tx.rawLog)}`);
+        throw new Error(`Failed to upload contract`);
+    }
 
     //@ts-ignore
     const codeId = tx.arrayLog!.find((log) => log.type === "message" && log.key === "code_id").value;

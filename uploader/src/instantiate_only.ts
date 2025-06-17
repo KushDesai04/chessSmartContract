@@ -42,7 +42,7 @@ const instantiateContract = async (codeId: string, contractCodeHash: string): Pr
     //Find the contract_address in the logs
     //@ts-ignore
     const contractAddress = tx.arrayLog!.find((log) => log.type === "message" && log.key === "contract_address").value;
-    
+
     return contractAddress;
 };
 

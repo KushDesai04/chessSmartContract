@@ -8,12 +8,14 @@ const ChessGame = () => {
   const [game, setGame] = useState<TxResponse | null>(null);
   const [joinGameId, setJoinGameId] = useState<string>("");
   const [createdGameId, setCreatedGameId] = useState<number>(-1);
+  const [error, setError] = useState<string | null>(null);
   const { connectWallet, secretAddress } = useContext(SecretJsContext)!;
-  const { createGame, joinGame, getGame, listGames } = SecretJsFunctions();
+  const { createGame, joinGame, getGame, listGames, makeMove } = SecretJsFunctions();
 
 
 
   const handleCreateGame = async () => {
+    setError(null);
     const txResponse = await createGame();
     setGame(txResponse);
     console.log("Game created:", txResponse);
@@ -25,18 +27,28 @@ const ChessGame = () => {
   };
 
   const handleJoinGame = async () => {
+    setError(null);
     const gameId = parseInt(joinGameId, 10);
     const txResponse = await joinGame(gameId);
-    console.log("Game joined:", txResponse);
+    if (txResponse.code !== 0) {
+      console.error("Error joining game:", txResponse.rawLog);
+      if (txResponse.rawLog.includes("No game found")) {
+        setError(`No game found with ID ${gameId}. Please check the ID and try again.`);
+      }
+      return;
+    }
+    setCreatedGameId(parseInt(joinGameId, 10));
+    setGame(txResponse);
   };
 
   const getGameStatus = async (gameId: number) => {
     try {
+      setError(null);
       const response = await getGame(gameId);
       console.log("Game status:", response);
       return response;
     } catch (error) {
-      console.error("Error fetching game status:", error);
+      setError("Error fetching game status: " + error);
     }
   };
 
@@ -46,16 +58,28 @@ const ChessGame = () => {
       console.log("All games:", games);
       return games;
     } catch (error) {
-      console.error("Error fetching all games:", error);
+      setError("Error fetching all games: " + error);
       return [];
     }
   }
 
+  const makeChessMove = async (from: string, to: string, promotion: string | null) => {
+    try {
+      setError(null);
+      const txResponse = await makeMove(createdGameId, from, to, promotion);
+      console.log("Move made:", txResponse);
+      return txResponse;
+    } catch (error) {
+      setError("Error making move: " + error);
+    }
+  };
+
   return (
     <>
+      {error && <p style={{ color: "red" }}>{error}</p>}
       {game ? (
         <div>
-          <ChessBoard createdGameId={createdGameId} getGameStatus={getGameStatus} />
+          <ChessBoard createdGameId={createdGameId} getGameStatus={getGameStatus} makeMove={makeChessMove} />
         </div>
       ) : (
         <div>

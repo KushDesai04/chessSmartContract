@@ -21,6 +21,7 @@ pub enum GameStatus {
     Stalemate,                // Draw by stalemate
     DrawOffered,              // Draw proposal active
     DrawAccepted,             // Mutual draw agreement
+    Checkmate,
 }
 
 
@@ -48,6 +49,7 @@ impl<'de> Deserialize<'de> for GameStatus {
             4 => Ok(GameStatus::Stalemate),
             5 => Ok(GameStatus::DrawAccepted),
             6 => Ok(GameStatus::DrawOffered),
+            7 => Ok(GameStatus::Checkmate),
             _ => Err(Error::custom("Invalid GameStatus value")),
         }
     }
