@@ -1,6 +1,5 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult
 };
 
 use crate::chess::validate_move;
@@ -20,23 +19,37 @@ pub fn instantiate(
 
 #[entry_point]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
-    let sender_canonical = deps.api.addr_canonicalize(info.sender.as_str())?;
+
     match msg {
-        ExecuteMsg::CreateGame{} => create_game(deps,env,sender_canonical),
-        ExecuteMsg::JoinGame{game_id} => join_game(deps,env,sender_canonical,game_id),
-        ExecuteMsg::MakeMove { game_id, move_from, move_to, promotion } => make_move(deps,env,sender_canonical,game_id,move_from, move_to, promotion),
-        ExecuteMsg::Resign { game_id } => resign(deps,env,sender_canonical,game_id),
+        ExecuteMsg::CreateGame{} => create_game(deps, env, info.sender.clone()),
+        ExecuteMsg::JoinGame{game_id} => join_game(deps,env,info.sender.clone(),game_id),
+        ExecuteMsg::MakeMove { game_id, move_from, move_to, promotion } => make_move(deps,env,info.sender.clone(),game_id,move_from, move_to, promotion),
+        ExecuteMsg::Resign { game_id } => resign(deps,env,info.sender.clone(),game_id),
     }
 }
 
-fn create_game(deps: DepsMut, _env: Env, sender: CanonicalAddr) -> StdResult<Response> {
-    let new_game_state: GameState = GameState {
+fn create_game(deps: DepsMut, env: Env, sender: Addr) -> StdResult<Response> {
+
+    let mut new_game_state: GameState = GameState {
         fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1".to_string(),
-        white: sender,
+        white: None,
         black: None,
         turn: 0,
         status: GameStatus::Pending,
     };
+
+    let bytes: Option<Binary> = env.block.random;
+    if let Some(random_bytes) =  bytes {
+        // Use the first byte to decide color
+        if !random_bytes.is_empty() && random_bytes.as_slice()[0] % 2 == 0 {
+            new_game_state.white = Some(sender);
+        } else {
+            new_game_state.black = Some(sender);
+        }
+    } else {
+        // Fallback: default to white if no randomness
+        new_game_state.white = Some(sender);
+    }
 
 
     let mut game_id = NEXT_GAME_ID.load(deps.storage)?;
@@ -47,14 +60,21 @@ fn create_game(deps: DepsMut, _env: Env, sender: CanonicalAddr) -> StdResult<Res
     Ok(Response::new().add_attribute("game_id", game_id.to_string()))
 }
 
-fn join_game(deps: DepsMut, _env: Env, sender: CanonicalAddr, game_id: u64) -> StdResult<Response> {
+fn join_game(deps: DepsMut, _env: Env, sender: Addr, game_id: u64) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
-            if state.white == sender {
-                return Ok(Response::default()); // Not an error - may just be reconnecting to the game
+
+            // User may just be reconnecting to the game - Not an error
+            if state.white == Some(sender.clone()) || state.black == Some(sender.clone()) {
+                return Ok(Response::default());
             }
-            state.black = Some(sender);
+            // Set the other player to colour
+            if state.white.is_some() {
+                state.black = Some(sender);
+            } else {
+                state.white = Some(sender);
+            }
             state.status = GameStatus::Active;
             GAMES.insert(deps.storage, &game_id, &state)?;
             Ok(Response::default())
@@ -63,17 +83,17 @@ fn join_game(deps: DepsMut, _env: Env, sender: CanonicalAddr, game_id: u64) -> S
     }
 }
 
-fn make_move(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64, move_from: String, move_to: String, promotion: Option<String>) -> StdResult<Response> {
+fn make_move(deps: DepsMut, _env: Env, sender: Addr, game_id: u64, move_from: String, move_to: String, promotion: Option<String>) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
-            if (sender == state.white && state.turn % 2 != 0) {
+            if Some(sender.clone()) == state.white && state.turn % 2 != 0 {
                 // Not whites turn
                 return Err(StdError::GenericErr { msg: (format!("It is blacks turn")) });
-            } else if (sender == state.black && state.turn % 2 == 0) {
+            } else if Some(sender.clone()) == state.black && state.turn % 2 == 0 {
                 // Not blacks turn
                 return Err(StdError::GenericErr { msg: (format!("It is whites turn")) });
-            } else if (sender != state.black && sender != state.white) {
+            } else if Some(sender.clone()) != state.black && Some(sender.clone()) != state.white {
                 // Not one of the players
                 return Err(StdError::GenericErr { msg: (format!("Not a player")) });
             }
@@ -93,7 +113,7 @@ fn make_move(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64, mov
     }
 }
 
-fn resign(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64) -> StdResult<Response> {
+fn resign(deps: DepsMut, _env: Env, _sender: Addr, game_id: u64) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
@@ -112,7 +132,7 @@ fn resign(deps: DepsMut, _env: Env, _sender: CanonicalAddr, game_id: u64) -> Std
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetGame { game_id } => {
-            return game_status(deps, env, game_id)
+            return get_game_state(deps, env, game_id)
         },
         QueryMsg::ListGames {  } => {
             return all_games(deps, env)
@@ -120,8 +140,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn game_status(deps: Deps, _env: Env, game_id: u64) -> StdResult<Binary> {
+fn get_game_state(deps: Deps, _env: Env, game_id: u64) -> StdResult<Binary> {
     let game_state = GAMES.get(deps.storage, &game_id);
+
     match game_state {
         Some(state) => {
             Ok(to_binary(&QueryAnswer::GameState(state))?)

@@ -1,14 +1,15 @@
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import ChessBoard from "./ChessBoard";
-import { SecretJsFunctions } from "./secretjs/SecretJsFunctions";
+import { type Color } from "chess.js";
+import { SecretJsFunctions, type GameState } from "./secretjs/SecretJsFunctions";
 import { SecretJsContext } from "./secretjs/SecretJsContext";
-import type { TxResponse } from "secretjs";
 
 const ChessGame = () => {
-  const [game, setGame] = useState<TxResponse | null>(null);
+  const [game, setGame] = useState<GameState | null>(null);
   const [joinGameId, setJoinGameId] = useState<string>("");
   const [createdGameId, setCreatedGameId] = useState<number>(-1);
   const [error, setError] = useState<string | null>(null);
+  const [playerColor, setPlayerColor] = useState<Color | null>(null);
   const { connectWallet, secretAddress } = useContext(SecretJsContext)!;
   const { createGame, joinGame, getGame, listGames, makeMove } = SecretJsFunctions();
 
@@ -17,7 +18,6 @@ const ChessGame = () => {
   const handleCreateGame = async () => {
     setError(null);
     const txResponse = await createGame();
-    setGame(txResponse);
     console.log("Game created:", txResponse);
     let gameId = txResponse.arrayLog?.[6].value as unknown as number; // Assuming the game ID is in the 7th log entry
     if (gameId) {
@@ -38,7 +38,6 @@ const ChessGame = () => {
       return;
     }
     setCreatedGameId(parseInt(joinGameId, 10));
-    setGame(txResponse);
   };
 
   const getGameStatus = async (gameId: number) => {
@@ -63,9 +62,35 @@ const ChessGame = () => {
     }
   }
 
+  useEffect(() => {
+    if (createdGameId !== -1) {
+      setPlayerColorFromState();
+    }
+  }, [createdGameId]);
+
+  const setPlayerColorFromState = async () => {
+    const gameState = await getGame(createdGameId);
+      if (gameState) {
+        console.log("Game state from main:", gameState);
+        console.log("Secret address:", secretAddress);
+        if (gameState.black === secretAddress) {
+          setPlayerColor("b");
+          console.log("Player is black");
+        } else if (gameState.white === secretAddress) {
+          setPlayerColor("w");
+          console.log("Player is white");
+        }
+      } else {
+        console.error("Game state is null or undefined");
+        setError("Failed to retrieve game state. Please try again later.");
+      }
+      setGame(gameState);
+  }
+
   const makeChessMove = async (from: string, to: string, promotion: string | null) => {
     try {
       setError(null);
+      console.log("Making move from main:", from, "to:", to, "promotion:", promotion);
       const txResponse = await makeMove(createdGameId, from, to, promotion);
       console.log("Move made:", txResponse);
       return txResponse;
@@ -78,14 +103,18 @@ const ChessGame = () => {
     <>
       {error && <p style={{ color: "red" }}>{error}</p>}
       {game ? (
-        <div>
-          <ChessBoard createdGameId={createdGameId} getGameStatus={getGameStatus} makeMove={makeChessMove} />
-        </div>
-      ) : (
-        <div>
-          <p>Connect your wallet to create a game.</p>
-          <button onClick={connectWallet}>Connect Wallet</button>
-          {secretAddress && <p>Connected as: {secretAddress}</p>}
+                <div>
+                  <h2> Game ID: {createdGameId} </h2>
+                  <ChessBoard createdGameId={createdGameId} getGameStatus={getGameStatus} makeMove={makeChessMove} playerColor={playerColor} />
+                </div>
+              ) : (
+                <div>
+                  {secretAddress ? <p>Connected as: {secretAddress}</p> :
+                    <>
+                      <p>Connect your wallet to create a game.</p>
+                      <button onClick={connectWallet}>Connect Wallet</button>
+                    </>
+                  }
 
           <button onClick={handleCreateGame}>Create Game</button>
           <p>Game Status: {game ? "Game Created" : "No game created yet"}</p>
@@ -94,7 +123,7 @@ const ChessGame = () => {
             type="text"
             placeholder="Enter Game ID to join"
             value={joinGameId}
-            onChange={(e) => setJoinGameId(e.target.value)}/>
+            onChange={(e) => setJoinGameId(e.target.value)} />
           <button onClick={handleJoinGame}>Join Game</button>
           <button onClick={() => listAllGames()}>See games</button>
         </div>

@@ -9,6 +9,8 @@ const contractAddress = import.meta.env.VITE_CONTRACT_ADDR;
 type GameState = {
     fen: string;
     turn: number;
+    white?: string;
+    black?: string;
     status: GameStatus;
 };
 
@@ -70,14 +72,14 @@ const SecretJsFunctions = () => {
                 make_move: { game_id: game_id, move_from: from, move_to: to, promotion: promotion }
             }
         };
-
+        console.log("Making move:", msg);
         const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
         console.log(tx);
         return tx;
     }
 
 
-    const getGame = async (gameId: number): Promise<GameStatusResponse> => {
+    const getGame = async (gameId: number): Promise<GameState> => {
         if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
         const game_id = parseInt(gameId.toString(), 10);
         const msg = {
@@ -91,7 +93,8 @@ const SecretJsFunctions = () => {
         try {
             const response = await secretJs.query.compute.queryContract(msg);
             console.log(response);
-            return response as GameStatusResponse;
+            // @ts-ignore - response.game_state is expected to be of type GameState
+            return response.game_state as GameState;
         } catch (error) {
             throw new QueryError("Failed to fetch game status: " + error);
         }

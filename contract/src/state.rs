@@ -1,4 +1,4 @@
-use cosmwasm_std::{CanonicalAddr};
+use cosmwasm_std::{Addr};
 use schemars::JsonSchema;
 use serde::{de::Error, Deserialize, Serialize};
 use secret_toolkit::storage::{Item, Keymap};
@@ -7,11 +7,12 @@ use secret_toolkit::storage::{Item, Keymap};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GameState {
     pub fen: String,          // e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-    pub white: CanonicalAddr,
-    pub black: Option<CanonicalAddr>,
+    pub white: Option<Addr>,
+    pub black: Option<Addr>,
     pub turn: u64,            // block height
     pub status: GameStatus,
 }
+
 
 #[derive(Clone, Copy, Debug, PartialEq, JsonSchema)]
 pub enum GameStatus {

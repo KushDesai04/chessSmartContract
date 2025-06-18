@@ -22,6 +22,7 @@ type ChessBoardProps = {
     createdGameId: number; // Optional prop for created game ID
     getGameStatus: (gameId: number) => Promise<any>; // Optional prop for getting game status
     makeMove: (from: Square, to: Square, promotion: string | null) => void; // Function to make a move
+    playerColor?: Color | null; // Optional prop for player color
 };
 
 interface MappedSquare {
@@ -31,7 +32,7 @@ interface MappedSquare {
     highlight: boolean;
 }
 
-const ChessBoard = ({ createdGameId, getGameStatus, makeMove }: ChessBoardProps) => {
+const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor }: ChessBoardProps) => {
 
     const [board, setBoard] = useState<MappedSquare[][]>([]);
     const [chess, setChess] = useState<Chess>(new Chess());
@@ -44,14 +45,14 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove }: ChessBoardProps)
     useEffect(() => {
         const fetchStatus = async () => {
             const gameState = await getStatus();
-            console.warn("Fetched game status:", gameState.game_state.game_state);
+            console.warn("Fetched game status:", gameState);
             if (!gameState) {
                 console.error("Error fetching game status:", gameState.rawLog);
                 return;
             } else {
-                const f = gameState.game_state.fen;
+                const f = gameState.fen;
                 setFen(f);
-                const status = gameState.game_state.status;
+                const status = gameState.status;
                 setGameStatus(status);
             }
         };
@@ -158,9 +159,12 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove }: ChessBoardProps)
 
     const handleSquareClick = (square: String) => {
         if (gameStatus !== 2) {return} // Game is not active, do nothing
+        // Not your turn, do nothing
+        const turn = chess.turn();
+        if (playerColor && playerColor !== turn) {return}
 
         // Handle selection logic
-        if (chess.moves({ square: selectedSquare as Square, verbose: true }).map((move: { to: any; }) => move.to).includes(square as Square)) {
+        if (selectedSquare && chess.moves({ square: selectedSquare as Square, verbose: true }).map((move: { to: any; }) => move.to).includes(square as Square)) {
             console.log(`Moving piece from ${selectedSquare} to ${square}`);
             makeMove(selectedSquare as Square, square as Square, promotionPiece);
             setSelectedSquare(null);
