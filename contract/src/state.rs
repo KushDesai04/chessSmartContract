@@ -20,9 +20,12 @@ pub enum GameStatus {
     Active,                   // Game in progress
     Check,                    // Current player in check
     Stalemate,                // Draw by stalemate
-    DrawOffered,              // Draw proposal active
     DrawAccepted,             // Mutual draw agreement
-    Checkmate,
+    DrawOffered,              // Draw proposal active
+    WhiteWins,
+    BlackWins,
+    WhiteResign,
+    BlackResign,
 }
 
 
@@ -44,13 +47,16 @@ impl<'de> Deserialize<'de> for GameStatus {
     {
         let value = i32::deserialize(deserializer)?;
         match value {
-            1 => Ok(GameStatus::Pending),
-            2 => Ok(GameStatus::Active),
-            3 => Ok(GameStatus::Check),
-            4 => Ok(GameStatus::Stalemate),
-            5 => Ok(GameStatus::DrawAccepted),
-            6 => Ok(GameStatus::DrawOffered),
-            7 => Ok(GameStatus::Checkmate),
+            1  => Ok(GameStatus::Pending),
+            2  => Ok(GameStatus::Active),
+            3  => Ok(GameStatus::Check),
+            4  => Ok(GameStatus::Stalemate),
+            5  => Ok(GameStatus::DrawAccepted),
+            6  => Ok(GameStatus::DrawOffered),
+            7  => Ok(GameStatus::WhiteWins),
+            8  => Ok(GameStatus::BlackWins),
+            9  => Ok(GameStatus::WhiteResign),
+            10 => Ok(GameStatus::BlackResign),
             _ => Err(Error::custom("Invalid GameStatus value")),
         }
     }

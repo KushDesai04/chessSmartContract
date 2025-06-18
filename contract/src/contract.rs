@@ -100,12 +100,18 @@ fn make_move(deps: DepsMut, _env: Env, sender: Addr, game_id: u64, move_from: St
             let (new_fen, status) = validate_move(&state.fen, &move_from, &move_to, promotion.as_deref())
                 .map_err(|_| StdError::GenericErr { msg: "Illegal Move".to_string() })?;
             state.fen = new_fen;
-            state.turn += 1;
             state.status = match status {
                 chess::BoardStatus::Ongoing => GameStatus::Active,
                 chess::BoardStatus::Stalemate => GameStatus::Stalemate,
-                chess::BoardStatus::Checkmate => GameStatus::Checkmate
+                chess::BoardStatus::Checkmate => {
+                    if state.turn % 2 == 0 {
+                        GameStatus::WhiteWins
+                    } else {
+                        GameStatus::BlackWins
+                    }
+                }
             };
+            state.turn += 1;
             GAMES.insert(deps.storage, &game_id, &state)?;
             Ok(Response::default())
         },
@@ -113,13 +119,18 @@ fn make_move(deps: DepsMut, _env: Env, sender: Addr, game_id: u64, move_from: St
     }
 }
 
-fn resign(deps: DepsMut, _env: Env, _sender: Addr, game_id: u64) -> StdResult<Response> {
+fn resign(deps: DepsMut, _env: Env, sender: Addr, game_id: u64) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
             if state.status == GameStatus::Active {
-                state.status = GameStatus::Check;
-                return Ok(Response::default())
+                if state.white == Some(sender) {
+                    state.status = GameStatus::WhiteResign;
+                } else if state.black == Some(sender) {
+                    state.status = GameStatus::BlackResign;
+                }
+                GAMES.insert(deps.storage, &game_id, &state)?;
+                return Ok(Response::default());
             }
             return Err(StdError::GenericErr { msg: ("Game is not active").to_string() })
         },
