@@ -11,10 +11,12 @@ const ChessGame = () => {
   const [error, setError] = useState<string | null>(null);
   const [playerColor, setPlayerColor] = useState<Color | null>(null);
   const { connectWallet, secretAddress } = useContext(SecretJsContext)!;
-  const { createGame, joinGame, getGame, listGames, makeMove } = SecretJsFunctions();
+  const { createGame, joinGame, getGame, listGames, makeMove, resignGame } = SecretJsFunctions();
 
-
-
+  /**
+   *  Handles wallet connection and initializes the game state.
+   *  If the wallet is not connected, it prompts the user to connect.
+   */
   const handleCreateGame = async () => {
     setError(null);
     const txResponse = await createGame();
@@ -26,6 +28,9 @@ const ChessGame = () => {
     console.log("Game ID:", gameId);
   };
 
+  /**
+   * Handles joining an existing game.
+   */
   const handleJoinGame = async () => {
     setError(null);
     const gameId = parseInt(joinGameId, 10);
@@ -40,6 +45,11 @@ const ChessGame = () => {
     setCreatedGameId(parseInt(joinGameId, 10));
   };
 
+  /**
+   * Fetches the current status of a game.
+   * @param gameId The ID of the game to fetch.
+   * @returns The current game status.
+   */
   const getGameStatus = async (gameId: number) => {
     try {
       setError(null);
@@ -51,6 +61,10 @@ const ChessGame = () => {
     }
   };
 
+  /**
+   * Lists all games available.
+   *  @returns {Promise<GameState[]>} A promise that resolves to an array of game states.
+   */
   const listAllGames = async () => {
     try {
       const games = await listGames();
@@ -62,12 +76,10 @@ const ChessGame = () => {
     }
   }
 
-  useEffect(() => {
-    if (createdGameId !== -1) {
-      setPlayerColorFromState();
-    }
-  }, [createdGameId]);
-
+  /**
+   *  Sets the player's color based on the game state.
+   *  It checks the game state to determine if the player is black or white.
+   */
   const setPlayerColorFromState = async () => {
     const gameState = await getGame(createdGameId);
     if (gameState) {
@@ -87,6 +99,13 @@ const ChessGame = () => {
     setGame(gameState);
   }
 
+  /**
+   * Makes a chess move.
+   * @param from The starting position of the piece.
+   * @param to The ending position of the piece.
+   * @param promotion The promotion piece (if any).
+   * @returns The transaction response.
+   */
   const makeChessMove = async (from: string, to: string, promotion: string | null) => {
     try {
       setError(null);
@@ -98,6 +117,27 @@ const ChessGame = () => {
       setError("Error making move: " + error);
     }
   };
+
+  /**
+   * Resigns from the current game.
+   * @returns The transaction response.
+   */
+  const resignFromGame = async () => {
+    try {
+      setError(null);
+      const response = await resignGame(createdGameId);
+      console.log(`${playerColor} has resigned`)
+      return response
+    } catch (error) {
+      setError("Error resigning: " + error);
+    }
+  }
+
+  useEffect(() => {
+    if (createdGameId !== -1) {
+      setPlayerColorFromState();
+    }
+  }, [createdGameId]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
@@ -134,6 +174,7 @@ const ChessGame = () => {
               getGameStatus={getGameStatus}
               makeMove={makeChessMove}
               playerColor={playerColor}
+              resignFromGame={resignFromGame}
             />
           </div>
         ) : (
