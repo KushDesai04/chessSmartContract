@@ -72,7 +72,7 @@ const SecretJsFunctions = () => {
                 make_move: { game_id: game_id, move_from: from, move_to: to, promotion: promotion }
             }
         };
-        console.log("Making move:", msg);
+
         const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
         console.log(tx);
         return tx;
@@ -93,7 +93,7 @@ const SecretJsFunctions = () => {
         try {
             const response = await secretJs.query.compute.queryContract(msg);
             console.log(response);
-            // @ts-ignore - response.game_state is expected to be of type GameState
+            // @ts-ignore
             return response.game_state as GameState;
         } catch (error) {
             throw new QueryError("Failed to fetch game status: " + error);
@@ -119,12 +119,29 @@ const SecretJsFunctions = () => {
         }
     }
 
+    const resignGame = async (gameId: number): Promise<TxResponse> => {
+        if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
+        const game_id = parseInt(gameId.toString(), 10);
+        const msg = {
+            sender: secretAddress,
+            contract_address: contractAddress,
+            code_hash: contractCodeHash,
+            msg: {
+                resign: { game_id: game_id }
+            }
+        };
+        const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
+        console.log(tx);
+        return tx;
+    };
+
     return {
         createGame,
         joinGame,
         getGame,
         listGames,
         makeMove,
+        resignGame,
     };
 };
 

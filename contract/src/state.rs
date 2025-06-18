@@ -16,16 +16,13 @@ pub struct GameState {
 
 #[derive(Clone, Copy, Debug, PartialEq, JsonSchema)]
 pub enum GameStatus {
-    Pending = 1,                  // Waiting for opponent
+    Pending = 1,              // Waiting for opponent
     Active,                   // Game in progress
-    Check,                    // Current player in check
     Stalemate,                // Draw by stalemate
-    DrawAccepted,             // Mutual draw agreement
-    DrawOffered,              // Draw proposal active
     WhiteWins,
     BlackWins,
-    WhiteResign,
-    BlackResign,
+    WhiteResigned,
+    BlackResigned,
 }
 
 
@@ -49,14 +46,11 @@ impl<'de> Deserialize<'de> for GameStatus {
         match value {
             1  => Ok(GameStatus::Pending),
             2  => Ok(GameStatus::Active),
-            3  => Ok(GameStatus::Check),
-            4  => Ok(GameStatus::Stalemate),
-            5  => Ok(GameStatus::DrawAccepted),
-            6  => Ok(GameStatus::DrawOffered),
-            7  => Ok(GameStatus::WhiteWins),
-            8  => Ok(GameStatus::BlackWins),
-            9  => Ok(GameStatus::WhiteResign),
-            10 => Ok(GameStatus::BlackResign),
+            3  => Ok(GameStatus::Stalemate),
+            4  => Ok(GameStatus::WhiteWins),
+            5  => Ok(GameStatus::BlackWins),
+            6  => Ok(GameStatus::WhiteResigned),
+            7 => Ok(GameStatus::BlackResigned),
             _ => Err(Error::custom("Invalid GameStatus value")),
         }
     }

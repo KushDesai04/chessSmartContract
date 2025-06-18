@@ -11,7 +11,7 @@ const ChessGame = () => {
   const [error, setError] = useState<string | null>(null);
   const [playerColor, setPlayerColor] = useState<Color | null>(null);
   const { connectWallet, secretAddress } = useContext(SecretJsContext)!;
-  const { createGame, joinGame, getGame, listGames, makeMove } = SecretJsFunctions();
+  const { createGame, joinGame, getGame, listGames, makeMove, resignGame } = SecretJsFunctions();
 
 
 
@@ -99,6 +99,18 @@ const ChessGame = () => {
     }
   };
 
+  const resignFromGame = async () => {
+    try {
+      setError(null);
+      const response = await resignGame(createdGameId);
+      console.log(`${playerColor} has resigned`)
+      return response
+    } catch (error) {
+      setError("Error resiging: " + error);
+    }
+
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl rounded-2xl p-8 w-full max-w-6xl">
@@ -134,6 +146,7 @@ const ChessGame = () => {
               getGameStatus={getGameStatus}
               makeMove={makeChessMove}
               playerColor={playerColor}
+              resignFromGame={resignFromGame}
             />
           </div>
         ) : (
