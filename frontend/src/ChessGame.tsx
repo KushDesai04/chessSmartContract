@@ -27,7 +27,7 @@ const ChessGame = () => {
     const txResponse = await createGame(wager);
     console.log("Game created:", txResponse);
     // Get the last element in the arrayLog array (if it exists)
-    let gameId = txResponse.arrayLog?.[txResponse.arrayLog.length - 1]?.value as unknown as number;
+    const gameId = txResponse.arrayLog?.find(log => log.key === "game_id")?.value as unknown as number;
     if (gameId) {
       setCreatedGameId(gameId);
     }
