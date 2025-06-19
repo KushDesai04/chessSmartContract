@@ -33,6 +33,19 @@ interface MappedSquare {
     highlight: boolean;
 }
 
+const getStatusHuman = (gameStatus: number) => {
+        switch (gameStatus) {
+            case 1: return "Pending";
+            case 2: return "Active";
+            case 3: return "Stalemate";
+            case 4: return "Checkmate! White wins";
+            case 5: return "Checkmate! Black wins";
+            case 6: return "White has resigned. Black wins";
+            case 7: return "Black has resigned. White wins";
+            default: return "Unknown game status.";
+        }
+    };
+
 
 const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resignFromGame }: ChessBoardProps) => {
     const [board, setBoard] = useState<MappedSquare[][]>([]);
@@ -207,7 +220,8 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resig
         if (gameStatus !== 2) { return }
 
         const turn = chess.turn();
-        if (playerColor && playerColor !== turn) { return }
+        if (playerColor && playerColor !== turn) { return } // Not the player's turn
+        if (!playerColor) { return } // Spectator
 
         if (selectedSquare && chess.moves({ square: selectedSquare as Square, verbose: true }).map((move: { to: any; }) => move.to).includes(square as Square)) {
             console.log(`Moving piece from ${selectedSquare} to ${square}`);
@@ -479,7 +493,7 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resig
                                         <div className={`w-4 h-4 rounded-full mr-2 ${playerColor === 'w' ? 'bg-white' : 'bg-gray-800'}`}></div>
                                     )}
                                     <span className="text-white font-semibold text-lg">
-                                        {playerColor === 'w' ? 'White' : playerColor === 'b' ? 'Black' : 'Observer'}
+                                        {playerColor === 'w' ? 'White' : playerColor === 'b' ? 'Black' : 'Spectator'}
                                     </span>
                                 </div>
                             </div>
@@ -502,13 +516,7 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resig
                                     <div className="flex items-center">
                                         <span className="mr-2">{getStatusIcon()}</span>
                                         <span className={`font-medium ${getMessageColor()}`}>
-                                            {gameStatus === 1 ? 'Pending' :
-                                                gameStatus === 2 ? 'Active' :
-                                                    gameStatus === 3 ? 'Stalemate' :
-                                                        gameStatus === 4 ? 'White Wins' :
-                                                            gameStatus === 5 ? 'Black Wins' :
-                                                                gameStatus === 6 ? 'White Resigned' :
-                                                                    gameStatus === 7 ? 'Black Resigned' : "Unknown"}
+                                            {getStatusHuman(gameStatus)}
                                         </span>
                                     </div>
                                 </div>
@@ -521,7 +529,7 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resig
                             </div>
                         </div>
 
-                        {gameStatus == 2 && (
+                        {gameStatus == 2 && playerColor && (
                             <>
                                 {/* Game Controls */}
                                 <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-4">
@@ -549,3 +557,4 @@ const ChessBoard = ({ createdGameId, getGameStatus, makeMove, playerColor, resig
 };
 
 export default ChessBoard;
+export { getStatusHuman };
