@@ -6,11 +6,13 @@ use secret_toolkit::storage::{Item, Keymap};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct GameState {
+    pub id: u64,
     pub fen: String,          // e.g. "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
     pub white: Option<Addr>,
     pub black: Option<Addr>,
     pub turn: u64,            // block height
     pub status: GameStatus,
+    pub wager: u128,
 }
 
 

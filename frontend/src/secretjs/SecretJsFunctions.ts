@@ -7,11 +7,13 @@ const contractCodeHash = import.meta.env.VITE_CONTRACT_CODE_HASH;
 const contractAddress = import.meta.env.VITE_CONTRACT_ADDR;
 
 type GameState = {
+    id: number;
     fen: string;
-    turn: number;
     white?: string;
     black?: string;
+    turn: number;
     status: number;
+    wager: bigint;
 };
 
 const SecretJsFunctions = () => {
@@ -23,7 +25,7 @@ const SecretJsFunctions = () => {
 
     const { secretJs, secretAddress } = context;
 
-    const createGame = async (): Promise<TxResponse> => {
+    const createGame = async (wager: bigint): Promise<TxResponse> => {
         if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
 
         const msg = {
@@ -32,7 +34,14 @@ const SecretJsFunctions = () => {
             code_hash: contractCodeHash,
             msg: {
                 create_game: {}
-            }
+            },
+            sent_funds: [
+                {
+                    denom: "uscrt",
+                    amount: wager.toString(),
+                }
+            ]
+
         };
 
         const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
@@ -40,17 +49,28 @@ const SecretJsFunctions = () => {
         return tx;
     };
 
-    const joinGame = async (gameId: number): Promise<TxResponse> => {
+    const joinGame = async (gameId: number, wager: bigint): Promise<TxResponse> => {
         if (!secretJs || !secretAddress) throw new WalletError("no wallet connected");
-
+        console.log()
         const msg = {
             sender: secretAddress,
             contract_address: contractAddress,
             code_hash: contractCodeHash,
             msg: {
                 join_game: { game_id: gameId }
-            }
+            },
         };
+
+        // Only include sent_funds if wager is greater than 0
+        if (wager > 0n) {
+            // @ts-ignore
+            msg.sent_funds = [
+                {
+                    denom: "uscrt",
+                    amount: wager.toString(),
+                }
+            ];
+        }
 
         const tx = await secretJs.tx.compute.executeContract(msg, { gasLimit: 50_000 });
         console.log(tx);
@@ -109,7 +129,8 @@ const SecretJsFunctions = () => {
         try {
             const response = await secretJs.query.compute.queryContract(msg);
             console.log(response);
-            return response as GameState[];
+            // @ts-ignore
+            return response.all_games as GameState[];
         } catch (error) {
             throw new QueryError("Failed to fetch game list: " + error);
         }
