@@ -248,6 +248,8 @@ const ChessGame = () => {
   }, [secretAddress]);
 
   return (
+
+
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 shadow-2xl rounded-2xl p-8 w-full max-w-6xl">
         {/* Confirmation Modal */}
@@ -301,6 +303,20 @@ const ChessGame = () => {
 
         {/* Game View */}
         {game ? (
+          <>
+          {/* Back Button */}
+          <div className="text-center mb-4">
+            <button
+              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+              onClick={() => {
+                setGame(null);
+                setCreatedGameId(-1);
+                setPlayerColor(null);
+              }}
+            >
+              Back to Game List
+            </button>
+          </div>
           <div className="space-y-6">
             <div className="text-center">
               <div className="inline-flex items-center bg-white/20 backdrop-blur-sm rounded-full px-4 py-2">
@@ -316,6 +332,7 @@ const ChessGame = () => {
               resignFromGame={resignFromGame}
             />
           </div>
+          </>
         ) : (
           <div className="space-y-6">
             {/* Wallet Connection Status */}
@@ -324,7 +341,7 @@ const ChessGame = () => {
                 <div className="bg-green-500/20 border border-green-400/50 rounded-lg p-4 backdrop-blur-sm">
                   <div className="flex items-center justify-center">
                     <div className="w-3 h-3 bg-green-400 rounded-full mr-2 animate-pulse"></div>
-                    <span className="text-green-200 font-medium">Connected</span>
+                    <span className="text-green-200 font-medium">Wallet   Connected</span>
                   </div>
                   <p className="text-green-300/80 text-sm mt-1 font-mono truncate">{secretAddress}</p>
                 </div>
@@ -362,8 +379,9 @@ const ChessGame = () => {
                       onChange={(e) => setWager(BigInt(e.target.value))}
                     />
                     <button
-                      className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
+                      className={`w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg ${wager <= 0n ? 'opacity-50 cursor-not-allowed' : ''}`}
                       onClick={handleCreateGame}
+                      disabled={wager <= 0n}
                     >
                       Create Game
                     </button>
@@ -391,20 +409,6 @@ const ChessGame = () => {
                       </button>
                     </div>
                   </div>
-
-                  {/* Browse Games
-                  <div className="bg-white/5 border border-white/10 rounded-lg p-4 backdrop-blur-sm">
-                    <h3 className="text-white font-semibold mb-3 flex items-center">
-                      <span className="text-2xl mr-2">📋</span>
-                      Browse Games
-                    </h3>
-                    <button
-                      className="w-full bg-gradient-to-r from-gray-600 to-gray-700 hover:from-gray-700 hover:to-gray-800 text-white font-semibold px-6 py-3 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg"
-                      onClick={listAllGames}
-                    >
-                      View All Games
-                    </button>
-                  </div> */}
                   {/* All Games List */}
                   <div className="bg-white/5 border border-white/10 rounded-lg p-4 backdrop-blur-sm">
                     <h3 className="text-white font-semibold mb-3 flex items-center">

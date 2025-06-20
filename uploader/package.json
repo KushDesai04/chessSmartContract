@@ -18,7 +18,7 @@
     "test:dev": "ts-mocha test/**/*.spec.ts -w --watch-files '**/*.ts'",
     "upload": "node dist/src/upload",
     "instantiate": "node dist/src/instantiate_only",
-    "test_chess": "node dist/src/instantiate_and_test"
+    "instantiate_and_test_chess": "node dist/src/instantiate_and_test"
   },
   "devDependencies": {
     "@protobuf-ts/plugin": "^2.10.0",
