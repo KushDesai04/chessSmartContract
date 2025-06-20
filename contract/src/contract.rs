@@ -1,31 +1,18 @@
 use cosmwasm_std::{
-    entry_point,
-    to_binary,
-    Addr,
-    BankMsg,
-    Binary,
-    Coin,
-    CosmosMsg,
-    Deps,
-    DepsMut,
-    Env,
-    MessageInfo,
-    Response,
-    StdError,
-    StdResult,
-    Uint128,
+    entry_point, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128,
 };
 
 use crate::chess::validate_move;
-use crate::msg::{ ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg };
-use crate::state::{ GameState, GameStatus, GAMES, NEXT_GAME_ID };
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryAnswer, QueryMsg};
+use crate::state::{GameState, GameStatus, GAMES, NEXT_GAME_ID};
 
 #[entry_point]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg
+    _msg: InstantiateMsg,
 ) -> StdResult<Response> {
     NEXT_GAME_ID.save(deps.storage, &0)?;
     Ok(Response::default())
@@ -35,10 +22,23 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
         ExecuteMsg::CreateGame {} => create_game(deps, env, info.sender.clone(), info.funds),
-        ExecuteMsg::JoinGame { game_id } =>
-            join_game(deps, env, info.sender.clone(), game_id, info),
-        ExecuteMsg::MakeMove { game_id, move_from, move_to, promotion } =>
-            make_move(deps, env, info.sender.clone(), game_id, move_from, move_to, promotion),
+        ExecuteMsg::JoinGame { game_id } => {
+            join_game(deps, env, info.sender.clone(), game_id, info)
+        }
+        ExecuteMsg::MakeMove {
+            game_id,
+            move_from,
+            move_to,
+            promotion,
+        } => make_move(
+            deps,
+            env,
+            info.sender.clone(),
+            game_id,
+            move_from,
+            move_to,
+            promotion,
+        ),
         ExecuteMsg::Resign { game_id } => resign(deps, env, info.sender.clone(), game_id),
     }
 }
@@ -90,7 +90,7 @@ fn join_game(
     _env: Env,
     sender: Addr,
     game_id: u64,
-    info: MessageInfo
+    info: MessageInfo,
 ) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
@@ -128,10 +128,9 @@ fn join_game(
             GAMES.insert(deps.storage, &game_id, &state)?;
             Ok(Response::default())
         }
-        None =>
-            Err(StdError::GenericErr {
-                msg: format!("No game found with id {game_id}"),
-            }),
+        None => Err(StdError::GenericErr {
+            msg: format!("No game found with id {game_id}"),
+        }),
     }
 }
 
@@ -142,11 +141,16 @@ fn make_move(
     game_id: u64,
     move_from: String,
     move_to: String,
-    promotion: Option<String>
+    promotion: Option<String>,
 ) -> StdResult<Response> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(mut state) => {
+            if state.status != GameStatus::Active {
+                return Err(StdError::GenericErr {
+                    msg: format!("Game has ended."),
+                });
+            }
             if Some(sender.clone()) == state.white && state.turn % 2 != 0 {
                 // Not whites turn
                 return Err(StdError::GenericErr {
@@ -163,20 +167,22 @@ fn make_move(
                     msg: format!("Not a player"),
                 });
             }
-            let (new_fen, status) = validate_move(
-                &state.fen,
-                &move_from,
-                &move_to,
-                promotion.as_deref()
-            ).map_err(|_| StdError::GenericErr {
-                msg: "Illegal Move".to_string(),
-            })?;
+            let (new_fen, status) =
+                validate_move(&state.fen, &move_from, &move_to, promotion.as_deref()).map_err(
+                    |_| StdError::GenericErr {
+                        msg: "Illegal Move".to_string(),
+                    },
+                )?;
             state.fen = new_fen;
             state.status = match status {
                 chess::BoardStatus::Ongoing => GameStatus::Active,
                 chess::BoardStatus::Stalemate => GameStatus::Stalemate,
                 chess::BoardStatus::Checkmate => {
-                    if state.turn % 2 == 0 { GameStatus::WhiteWins } else { GameStatus::BlackWins }
+                    if state.turn % 2 == 0 {
+                        GameStatus::WhiteWins
+                    } else {
+                        GameStatus::BlackWins
+                    }
                 }
             };
             state.turn += 1;
@@ -184,10 +190,10 @@ fn make_move(
             let wager_messages = handle_wager(state);
             return Ok(Response::default().add_messages(wager_messages));
         }
-        None =>
-            Err(StdError::GenericErr {
-                msg: format!("No game found with id {game_id}"),
-            }),
+
+        None => Err(StdError::GenericErr {
+            msg: format!("No game found with id {game_id}"),
+        }),
     }
 }
 
@@ -211,10 +217,9 @@ fn resign(deps: DepsMut, _env: Env, sender: Addr, game_id: u64) -> StdResult<Res
                 msg: "Game is not active".to_string(),
             });
         }
-        None =>
-            Err(StdError::GenericErr {
-                msg: format!("No game found with id {game_id}"),
-            }),
+        None => Err(StdError::GenericErr {
+            msg: format!("No game found with id {game_id}"),
+        }),
     }
 }
 
@@ -289,15 +294,15 @@ fn get_game_state(deps: Deps, _env: Env, game_id: u64) -> StdResult<Binary> {
     let game_state = GAMES.get(deps.storage, &game_id);
     match game_state {
         Some(state) => Ok(to_binary(&QueryAnswer::GameState(state))?),
-        None =>
-            Err(StdError::GenericErr {
-                msg: format!("No game found with id {game_id}"),
-            }),
+        None => Err(StdError::GenericErr {
+            msg: format!("No game found with id {game_id}"),
+        }),
     }
 }
 
 fn all_games(deps: Deps, _env: Env) -> StdResult<Binary> {
-    let games: Vec<GameState> = GAMES.iter(deps.storage)?
+    let games: Vec<GameState> = GAMES
+        .iter(deps.storage)?
         .map(|game| {
             let (_game_id, game_state) = game?;
             Ok(game_state)
